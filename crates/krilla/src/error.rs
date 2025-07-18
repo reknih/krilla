@@ -7,7 +7,7 @@ use crate::configure::ValidationError;
 #[cfg(feature = "raster-images")]
 use crate::graphics::image::Image;
 use crate::surface::Location;
-use crate::tagging::TagId;
+use crate::tagging::tag::TagId;
 use crate::text::Font;
 
 /// A wrapper type for krilla errors.
@@ -25,7 +25,7 @@ pub enum KrillaError {
     Validation(Vec<ValidationError>),
     /// A duplicate [`Tag::id`] was provided.
     ///
-    /// [`Tag::id`]: crate::interchange::tagging::Tag::id
+    /// [`Tag::id`]: crate::interchange::tagging::tag::Tag::id
     DuplicateTagId(TagId, Option<Location>),
     /// A [`TagId`] was not found in the [`TagTree`].
     ///
