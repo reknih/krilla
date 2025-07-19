@@ -132,7 +132,8 @@ use smallvec::SmallVec;
 use crate::configure::{PdfVersion, ValidationError};
 use crate::error::{KrillaError, KrillaResult};
 use crate::serialize::SerializeContext;
-use crate::tagging::tag::{Attr, LayoutAttr, ListAttr, TableAttr, TagId, TagKind};
+use crate::tagging::tag::{TagId, TagKind, TagTrait};
+use crate::tagging::tag::internal::{Attr, LayoutAttr, ListAttr, TableAttr};
 use crate::util::lazy::LazyInit;
 
 pub mod tag;
@@ -420,12 +421,12 @@ impl TagKind {
             Self::TOCI(_) => struct_elem.kind(StructRole::TOCI),
             Self::Index(_) => struct_elem.kind(StructRole::Index),
             Self::P(_) => struct_elem.kind(StructRole::P),
-            Self::Hn(tag) if tag.level().get() == 1 => struct_elem.kind(StructRole::H1),
-            Self::Hn(tag) if tag.level().get() == 2 => struct_elem.kind(StructRole::H2),
-            Self::Hn(tag) if tag.level().get() == 3 => struct_elem.kind(StructRole::H3),
-            Self::Hn(tag) if tag.level().get() == 4 => struct_elem.kind(StructRole::H4),
-            Self::Hn(tag) if tag.level().get() == 5 => struct_elem.kind(StructRole::H5),
-            Self::Hn(tag) if tag.level().get() == 6 => struct_elem.kind(StructRole::H6),
+            Self::Hn(tag) if tag.level.get() == 1 => struct_elem.kind(StructRole::H1),
+            Self::Hn(tag) if tag.level.get() == 2 => struct_elem.kind(StructRole::H2),
+            Self::Hn(tag) if tag.level.get() == 3 => struct_elem.kind(StructRole::H3),
+            Self::Hn(tag) if tag.level.get() == 4 => struct_elem.kind(StructRole::H4),
+            Self::Hn(tag) if tag.level.get() == 5 => struct_elem.kind(StructRole::H5),
+            Self::Hn(tag) if tag.level.get() == 6 => struct_elem.kind(StructRole::H6),
             Self::L(_) => struct_elem.kind(StructRole::L),
             Self::LI(_) => struct_elem.kind(StructRole::LI),
             Self::Lbl(_) => struct_elem.kind(StructRole::Lbl),
@@ -451,7 +452,7 @@ impl TagKind {
             Self::Terms(_) => struct_elem.custom_kind(Name(b"Terms")),
             Self::Title(_) => struct_elem.custom_kind(Name(b"Title")),
             Self::Hn(tag) => {
-                let level = tag.level();
+                let level = tag.level;
                 // Dynamically register custom headings `Hn` with `n >= 7`
                 // Starting from PDF 2.0 arbitrary heading levels are supported,
                 // so the custom role mapping is redundant.
@@ -502,13 +503,6 @@ impl TagKind {
         }
     }
 
-    pub(crate) fn should_have_alt(&self) -> bool {
-        matches!(self, TagKind::Figure(_) | TagKind::Formula(_))
-    }
-
-    pub(crate) fn can_have_title(&self) -> bool {
-        matches!(self, Self::Hn(_))
-    }
 }
 
 /// A node in a tag tree.
@@ -637,7 +631,7 @@ impl TagGroup {
                     vacant.insert(elem_ref);
                 }
                 Entry::Occupied(_) => {
-                    return Err(KrillaError::DuplicateTagId(id.clone(), tag.location));
+                    return Err(KrillaError::DuplicateTagId(id.clone(), tag.location().copied()));
                 }
             }
         } else if matches!(self.tag, TagKind::Note(_)) {
@@ -655,31 +649,31 @@ impl TagGroup {
             sc.register_validation_error(ValidationError::MissingHeadingTitle);
         }
         if self.tag.should_have_alt() && tag.alt_text().is_none() {
-            sc.register_validation_error(ValidationError::MissingAltText(tag.location));
+            sc.register_validation_error(ValidationError::MissingAltText(tag.location().copied()));
         }
 
-        for attr in tag.attrs.iter() {
+        for attr in tag.attrs().iter() {
             match attr {
                 Attr::Id(_) => (), // Handled above
                 Attr::Title(title) => {
-                    struct_elem.title(TextStr(title));
+                    struct_elem.title(TextStr(&title));
                 }
                 Attr::Lang(lang) => {
                     if pdf_version >= PdfVersion::Pdf14 {
-                        struct_elem.lang(TextStr(lang));
+                        struct_elem.lang(TextStr(&lang));
                     }
                 }
                 Attr::AltText(alt) => {
-                    struct_elem.alt(TextStr(alt));
+                    struct_elem.alt(TextStr(&alt));
                 }
                 Attr::Expanded(expanded) => {
                     if pdf_version >= PdfVersion::Pdf15 {
-                        struct_elem.expanded(TextStr(expanded));
+                        struct_elem.expanded(TextStr(&expanded));
                     }
                 }
                 Attr::ActualText(actual_text) => {
                     if pdf_version >= PdfVersion::Pdf14 {
-                        struct_elem.actual_text(TextStr(actual_text));
+                        struct_elem.actual_text(TextStr(&actual_text));
                     }
                 }
 
@@ -692,7 +686,7 @@ impl TagGroup {
 
         // Lazily initialize the list attributes to avoid an empty array.
         let mut list_attributes = LazyInit::new(&mut attributes, |attrs| attrs.get().push().list());
-        for attr in tag.list_attrs.iter() {
+        for attr in tag.list_attrs().iter() {
             match attr {
                 ListAttr::Numbering(numbering) => {
                     list_attributes.get().list_numbering(numbering.to_pdf());
@@ -704,11 +698,11 @@ impl TagGroup {
         // Lazily initialize the table attributes to avoid an empty array.
         let mut table_attributes =
             LazyInit::new(&mut attributes, |attrs| attrs.get().push().table());
-        for attr in tag.table_attrs.iter() {
+        for attr in tag.table_attrs().iter() {
             match attr {
                 TableAttr::Summary(summary) => {
                     if pdf_version >= PdfVersion::Pdf17 {
-                        table_attributes.get().summary(TextStr(summary));
+                        table_attributes.get().summary(TextStr(&summary));
                     }
                 }
                 TableAttr::HeaderScope(scope) => {
@@ -737,7 +731,7 @@ impl TagGroup {
         // Lazily initialize the list attributes to avoid an empty array.
         let mut layout_attributes =
             LazyInit::new(&mut attributes, |attrs| attrs.get().push().layout());
-        for attr in tag.layout_attrs.iter() {
+        for attr in tag.layout_attrs().iter() {
             match attr {
                 LayoutAttr::Placement(placement) => {
                     layout_attributes.get().placement(placement.to_pdf());
@@ -778,7 +772,7 @@ impl TagGroup {
         if let Some(headers) = tag.headers() {
             for id in headers.iter() {
                 if !id_tree.contains_key(id) {
-                    return Err(KrillaError::UnknownTagId(id.clone(), tag.location));
+                    return Err(KrillaError::UnknownTagId(id.clone(), tag.location().copied()));
                 }
             }
         }

@@ -8,7 +8,7 @@ use krilla::metadata::{DateTime, Metadata};
 use krilla::outline::Outline;
 use krilla::page::Page;
 use krilla::paint::{Fill, FillRule, LinearGradient, SpreadMethod};
-use krilla::tagging::tag::{ListNumbering, TableHeaderScope, Tag};
+use krilla::tagging::tag::{ListNumbering, TableHeaderScope, Tag, FormulaTag, LTag, THTag};
 use krilla::tagging::{ArtifactType, ContentTag, SpanTag, TagGroup, TagTree};
 use krilla::text::{Font, TextDirection};
 use krilla::text::{GlyphId, KrillaGlyph};
@@ -532,7 +532,7 @@ fn validate_pdf_ua1_missing_requirements() {
     page.finish();
 
     let formula_loc = 2;
-    let mut tag_group = TagGroup::new(Tag::Formula.with_location(Some(formula_loc)));
+    let mut tag_group = TagGroup::new(FormulaTag::new().with_location(formula_loc));
     tag_group.push(id1);
     tag_group.push(annot);
 
@@ -571,10 +571,10 @@ fn validate_pdf_ua1_attributes(document: &mut Document) {
 
     let mut tag_tree = TagTree::new();
 
-    let mut group1 = TagGroup::new(Tag::L(ListNumbering::Circle));
+    let mut group1 = TagGroup::new(LTag::new(ListNumbering::Circle));
     group1.push(id1);
 
-    let mut group2 = TagGroup::new(Tag::TH(TableHeaderScope::Row));
+    let mut group2 = TagGroup::new(THTag::new(TableHeaderScope::Row));
     group2.push(id2);
 
     tag_tree.push(group1);
