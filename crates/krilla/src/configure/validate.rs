@@ -189,6 +189,11 @@ impl Validators {
         self.a.is_none() && self.ua.is_none()
     }
 
+    /// Returns the number of set validators.
+    pub fn len(self) -> usize {
+        (if self.a.is_some() { 1 } else { 0 }) + (if self.ua.is_some() { 1 } else { 0 })
+    }
+
     /// Returns the PDF/A validator, if set.
     pub fn archival(self) -> Option<Archival> {
         self.a
