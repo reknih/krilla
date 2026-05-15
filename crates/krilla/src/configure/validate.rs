@@ -370,7 +370,7 @@ impl ValidatorsBuilder {
 }
 
 /// A PDF validator for a specific conformance standard.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Validator {
     /// A PDF/A validator.
     A(Archival),
