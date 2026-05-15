@@ -394,6 +394,22 @@ impl Validator {
             Self::Ua(ua) => ua.requires_xmp_metadata(),
         }
     }
+
+    /// Minimum PDF version required to use this validator, if any.
+    pub fn min(self) -> Option<PdfVersion> {
+        match self {
+            Self::A(a) => a.min(),
+            Self::Ua(ua) => ua.min(),
+        }
+    }
+
+    /// Maximum PDF version this standard can be used with.
+    pub fn max(self) -> PdfVersion {
+        match self {
+            Self::A(a) => a.max(),
+            Self::Ua(ua) => ua.max(),
+        }
+    }
 }
 
 impl From<Archival> for Validator {
@@ -961,7 +977,8 @@ impl Archival {
         }
     }
 
-    const fn min(self) -> Option<PdfVersion> {
+    /// Minimum PDF version required to use this standard, if any.
+    pub const fn min(self) -> Option<PdfVersion> {
         match self {
             // PDF/A-1 through 3 require XMP `/Metadata` streams, which require PDF 1.4.
             Self::A1_A | Self::A1_B => Some(PdfVersion::Pdf14),
@@ -971,7 +988,8 @@ impl Archival {
         }
     }
 
-    const fn max(self) -> PdfVersion {
+    /// Maximum PDF version this standard can be used with.
+    pub const fn max(self) -> PdfVersion {
         match self {
             Self::A1_A | Self::A1_B => PdfVersion::Pdf14,
             Self::A2_A | Self::A2_B | Self::A2_U | Self::A3_A | Self::A3_B | Self::A3_U => {
@@ -1153,14 +1171,16 @@ impl Accessibility {
         }
     }
 
-    const fn min(self) -> Option<PdfVersion> {
+    /// Minimum PDF version required to use this standard, if any.
+    pub const fn min(self) -> Option<PdfVersion> {
         match self {
             // PDF/UA-1 requires Tagged PDF and XMP `/Metadata` streams, which both require PDF 1.4.
             Self::UA1 => Some(PdfVersion::Pdf14),
         }
     }
 
-    const fn max(self) -> PdfVersion {
+    /// Maximum PDF version this standard can be used with.
+    pub const fn max(self) -> PdfVersion {
         match self {
             // PDF/UA-1 is specified against PDF 1.7.
             Self::UA1 => PdfVersion::Pdf17,
