@@ -410,6 +410,14 @@ impl Validator {
             Self::Ua(ua) => ua.max(),
         }
     }
+
+    /// Returns a human-readable string representation of the validator.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::A(a) => a.as_str(),
+            Self::Ua(ua) => ua.as_str(),
+        }
+    }
 }
 
 impl From<Archival> for Validator {
